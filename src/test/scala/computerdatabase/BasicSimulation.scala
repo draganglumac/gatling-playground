@@ -60,6 +60,8 @@ class BasicSimulation extends Simulation {
 
   object Edit {
 
+    import java.util.concurrent.ThreadLocalRandom
+
     val edit: ChainBuilder = exec(http("Home")
       .get("/computers")
       .headers(defaultHeaders))
@@ -73,16 +75,21 @@ class BasicSimulation extends Simulation {
         .headers(defaultHeaders)
         .formParam("name", "Archie")
         .formParam("introduced", "2018-10-12")
-        .formParam("company", "36"))
+        .formParam("company", "36")
+        // introduce some random failures - as the server always returns 200, it will be treated as a failure when expected code is 201
+        .check(status.is(session => 200 + ThreadLocalRandom.current.nextInt(2))))
       .pause(1)
-  }
 
-  val scn: ScenarioBuilder = scenario("BasicSimulation")
-    .exec(Search.search, Browse.browse, Edit.edit)
+
+    val tryMaxEdit: ChainBuilder = tryMax(2) {
+      exec(edit)
+    }.exitHereIfFailed
+
+  }
 
   // Adding users
   val users: ScenarioBuilder = scenario("Users").exec(Search.search, Browse.browse)
-  val admins: ScenarioBuilder = scenario("Admins").exec(Search.search, Browse.browse, Edit.edit)
+  val admins: ScenarioBuilder = scenario("Admins").exec(Search.search, Browse.browse, Edit.tryMaxEdit)
 
   setUp(
     users.inject(rampUsers(10) during (10 seconds)),
