@@ -1,6 +1,7 @@
 package computerdatabase
 
 import io.gatling.core.Predef._
+import io.gatling.core.feeder.SourceFeederBuilder
 import io.gatling.core.structure.{ChainBuilder, ScenarioBuilder}
 import io.gatling.http.Predef._
 import io.gatling.http.protocol.HttpProtocolBuilder
@@ -21,16 +22,21 @@ class BasicSimulation extends Simulation {
 
   object Search {
 
+    // introduce random data to make scenario more realistic
+    val feeder: SourceFeederBuilder[String] = csv("search.csv").random
+
     val search: ChainBuilder = exec(http("Home")
       .get("/")
       .headers(defaultHeaders))
       .pause(1)
+      .feed(feeder)
       .exec(http("Search")
-        .get("/computers?f=macbook")
-        .headers(defaultHeaders))
+        .get("/computers?f=${searchCriterion}")
+        .headers(defaultHeaders)
+        .check(css("a:contains('${searchComputerName}')", "href").saveAs("computerURL")))
       .pause(1)
       .exec(http("Select")
-        .get("/computers/6")
+        .get("${computerURL}")
         .headers(defaultHeaders))
       .pause(1)
   }
@@ -75,7 +81,7 @@ class BasicSimulation extends Simulation {
   }
 
   val scn: ScenarioBuilder = scenario("BasicSimulation")
-      .exec(Search.search, Browse.browse, Edit.edit)
+    .exec(Search.search, Browse.browse, Edit.edit)
 
   // Adding users
   val users: ScenarioBuilder = scenario("Users").exec(Search.search, Browse.browse)
