@@ -43,22 +43,19 @@ class BasicSimulation extends Simulation {
 
   object Browse {
 
-    val browse: ChainBuilder = exec(http("Home")
-      .get("/computers")
+    // DRY - avoid code duplication
+
+    def goToPage(page: Int): ChainBuilder = exec(http("Page " + page)
+      .get("/computers?p=" + page)
       .headers(defaultHeaders))
       .pause(1)
-      .exec(http("Page 1")
-        .get("/computers?p=1")
-        .headers(defaultHeaders))
-      .pause(1)
-      .exec(http("Page 2")
-        .get("/computers?p=2")
-        .headers(defaultHeaders))
-      .pause(1)
-      .exec(http("Page 3")
-        .get("/computers?p=3")
-        .headers(defaultHeaders))
-      .pause(1)
+
+    val browse: ChainBuilder = exec(
+      goToPage(0),
+      goToPage(1),
+      goToPage(2),
+      goToPage(3),
+      goToPage(4))
   }
 
   object Edit {
