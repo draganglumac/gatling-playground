@@ -5,6 +5,7 @@ import io.gatling.core.structure.{ChainBuilder, ScenarioBuilder}
 import io.gatling.http.Predef._
 import io.gatling.http.protocol.HttpProtocolBuilder
 
+import scala.concurrent.duration._
 
 class BasicSimulation extends Simulation {
 
@@ -15,6 +16,8 @@ class BasicSimulation extends Simulation {
     .userAgentHeader("curl/7.54.0")
 
   val defaultHeaders = Map("Proxy-Connection" -> "Keep-Alive")
+
+  // splitting the monolith into separate processes
 
   object Search {
 
@@ -74,6 +77,13 @@ class BasicSimulation extends Simulation {
   val scn: ScenarioBuilder = scenario("BasicSimulation")
       .exec(Search.search, Browse.browse, Edit.edit)
 
-  setUp(scn.inject(atOnceUsers(1))).protocols(httpProtocol)
+  // Adding users
+  val users: ScenarioBuilder = scenario("Users").exec(Search.search, Browse.browse)
+  val admins: ScenarioBuilder = scenario("Admins").exec(Search.search, Browse.browse, Edit.edit)
+
+  setUp(
+    users.inject(rampUsers(10) during (10 seconds)),
+    admins.inject(rampUsers(2) during (10 seconds))
+  ).protocols(httpProtocol)
 
 }
